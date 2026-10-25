@@ -22,7 +22,7 @@ Pet-проект по Data Engineering. end-to-end пайплайн для сб�
 ## Как запустить локально
 
 1. Клонируйте репозиотрий
-  git clone https://github.com/твой_ник/MLde_project.git
+  git clone https://github.com/krovan06/weather_forecast
   cd MLde_project
 
 2. Создайте файл окружения .env в корне проекта и заполните его (пример есть в .env.example)
