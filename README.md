@@ -28,6 +28,7 @@ Pet-проект по Data Engineering: end-to-end пайплайн для сб�
 ```
 
 2. Создайте файл окружения .env в корне проекта и заполните его (пример есть в .env.example)
+```
 PostgreSQLS_USER=PostgreSQLs
 PostgreSQLS_PASSWORD=PostgreSQLs
 PostgreSQLS_DB=weather_db
@@ -36,8 +37,9 @@ STREAM_DB_PASSWORD=stream
 STREAM_DB_NAME=weather_stream
 _AIRFLOW_WWW_USER_USERNAME=admin
 _AIRFLOW_WWW_USER_PASSWORD=admin
+```
 
-3. Поднимите инфраструктуру через Docker Compose
+4. Поднимите инфраструктуру через Docker Compose
 ```
 docker compose up -d --build
 ```
