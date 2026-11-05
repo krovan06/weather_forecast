@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 
 from scripts.ml.ml_trainer import MLTrainer
 from scripts.ml.ml_research import MLResearch
+from scripts.ml.ml_evaluator import MLEvaluator
+from scripts.ml.s3_cleaner import S3MLCleaner
 
 
 default_args = {
@@ -16,6 +18,11 @@ default_args = {
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
 }
+
+
+def research_model():
+    researcher = MLResearch()
+    return researcher.run()
 
 
 def train_model_task(**context):
@@ -31,9 +38,13 @@ def train_model_task(**context):
     return result
 
 
-def research_model():
-    researcher = MLResearch()
-    return researcher.run()
+def evaluate_model():
+    evaluator = MLEvaluator()
+    return evaluator.run()
+
+def cleanup_old_models():
+    cleaner = S3MLCleaner()
+    return cleaner.clean_old_models(keep_last=3)
 
 
 with DAG(
@@ -56,5 +67,14 @@ with DAG(
         task_id='train_model',
         python_callable=train_model_task,
     )
+    evaluate = PythonOperator(
+        task_id='evaluate_model',
+        python_callable=evaluate_model,
+    )
 
-    start >> researcher >> train >> end
+    cleanup = PythonOperator(
+        task_id='cleanup_old_models',
+        python_callable=cleanup_old_models,
+    )
+
+    start >> researcher >> train >> evaluate >> cleanup >> end

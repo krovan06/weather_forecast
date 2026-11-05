@@ -130,6 +130,8 @@ class StarBuilder:
 
         select_str = ',\n                '.join(select_parts)
 
+        self.client.execute(f"TRUNCATE TABLE {self.database}.fact_weather")
+
         query = f"""
             INSERT INTO {self.database}.fact_weather 
                 (date, location_id, temperature_max, temperature_min, 

@@ -174,6 +174,10 @@ class MLTrainer:
         norm_stats = {
             'temp_mean': df[TARGET_COL].mean(),
             'temp_std': df[TARGET_COL].std(),
+            'lat_min': float(df['latitude'].min()),
+            'lat_max': float(df['latitude'].max()),
+            'lon_min': float(df['longitude'].min()),
+            'lon_max': float(df['longitude'].max()),
         }
 
         train, valid, test = self._split_data(df)

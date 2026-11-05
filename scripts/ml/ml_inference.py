@@ -1,4 +1,5 @@
 import io
+import json
 import numpy as np
 import torch 
 from datetime import datetime
@@ -15,20 +16,10 @@ FEATURE_COLS = [
     'weekday_sin', 'weekday_cos',
 ]
 
-NORM_STATS = {
-    'lat_min': 42.0, 'lat_max': 45.0,
-    'lon_min': 130.0, 'lon_max': 134.0,
-}
-
-HIDDEN_DIMS = [64, 128, 64]
 GRID_STEP = 0.1
 
 
 class MLInference:
-    """
-    Инференс MLP.
-    Генерирует детализированную сетку и пишет в weather_detailed.
-    """
 
     def __init__(self):
         self.client = ClickHouseClient(
@@ -37,12 +28,24 @@ class MLInference:
             database='weather_db'
         )
         self.s3_hook = S3Hook(aws_conn_id='s3_conn')
+        self.hidden_dims = None
+        self.norm_stats = None
 
     def _load_model(
         self,
         model_key: str,
         bucket: str = 'weather-data',
     ) -> WeatherMLP:
+        
+        timestamp = model_key.split('model_')[1].split('.pt')[0]
+        config_key = f"ml/models/config_{timestamp}.json"
+        
+        config_str = self.s3_hook.read_key(key=config_key, bucket_name=bucket)
+        config = json.loads(config_str)
+        
+        self.hidden_dims = config.get('hidden_dims', [64, 128, 64])
+        self.norm_stats = config.get('norm_stats')
+
         s3_object = self.s3_hook.get_key(
             key=model_key,
             bucket_name=bucket,
@@ -51,12 +54,12 @@ class MLInference:
 
         model = WeatherMLP(
             input_dim=len(FEATURE_COLS),
-            hidden_dims=HIDDEN_DIMS,
+            hidden_dims=self.hidden_dims,
             output_dim=1,
         )
 
         buffer = io.BytesIO(model_bytes)
-        model.load_state_dict(torch.load(buffer, map_location='cpu'))
+        model.load_state_dict(torch.load(buffer, map_location='cpu', weights_only=True))
         model.eval()
 
         return model
@@ -87,15 +90,14 @@ class MLInference:
     def _build_features(self, points: list) -> torch.Tensor:
         features = []
 
+        lat_min = self.norm_stats['lat_min']
+        lat_max = self.norm_stats['lat_max']
+        lon_min = self.norm_stats['lon_min']
+        lon_max = self.norm_stats['lon_max']
+
         for p in points:
-            lat_norm = (
-                (p['lat'] - NORM_STATS['lat_min'])
-                / (NORM_STATS['lat_max'] - NORM_STATS['lat_min'])
-            )
-            lon_norm = (
-                (p['lon'] - NORM_STATS['lon_min'])
-                / (NORM_STATS['lon_max'] - NORM_STATS['lon_min'])
-            )
+            lat_norm = (p['lat'] - lat_min) / (lat_max - lat_min)
+            lon_norm = (p['lon'] - lon_min) / (lon_max - lon_min)
 
             dt = datetime.strptime(p['date'], '%Y-%m-%d')
             month = dt.month
@@ -118,7 +120,11 @@ class MLInference:
         X = self._build_features(points)
 
         with torch.no_grad():
-            y_pred = model(X).numpy().flatten()
+            y_pred_norm = model(X).numpy().flatten()
+
+        temp_std = self.norm_stats['temp_std']
+        temp_mean = self.norm_stats['temp_mean']
+        y_pred_celsius = y_pred_norm * temp_std + temp_mean
 
         results = []
         for i, p in enumerate(points):
@@ -126,7 +132,7 @@ class MLInference:
                 'date': p['date'],
                 'latitude': p['lat'],
                 'longitude': p['lon'],
-                'temperature_max': float(y_pred[i]),
+                'temperature_max': float(y_pred_celsius[i]),
                 'interpolated': 1,
             })
 

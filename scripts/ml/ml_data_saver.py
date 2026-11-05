@@ -156,6 +156,7 @@ class MLDataSaver:
 
         self._create_table_if_not_exists(df, table_name)
         self._evolve_schema(df, table_name)
+        self.client.execute(f"TRUNCATE TABLE IF EXISTS {table_name}")
 
         df = df.copy()
         df['date'] = df['date'].dt.date
