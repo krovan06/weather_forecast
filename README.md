@@ -43,8 +43,7 @@ _AIRFLOW_WWW_USER_PASSWORD=admin
 ```
 docker compose up -d --build
 ```
-
-4. Откройте интерфейсы (они будут онаписаны в терминале или приложении docker desktop)
+Откройте интерфейсы (они будут онаписаны в терминале или приложении docker desktop)
   - Airflow http://localhost:8080 (admin / admin)
   - MinIO (S3) http://localhost:9001 (minioadmin / minioadmin)
   - Adminer (PostgreSQLs) http://localhost:8081
